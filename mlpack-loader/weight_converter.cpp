@@ -1,6 +1,6 @@
 #include<bits/stdc++.h>
-#include "models/models/models.hpp"
-#include "models/models/darknet/darknet.hpp"
+#include "./../../models/models/resnet/resnet.hpp"
+#include "./../../models/models/darknet/darknet.hpp"
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/foreach.hpp>
@@ -95,6 +95,13 @@ int main(int argc, char **argv)
       model2.Parameters() = arma::mat(20849576, 1);
       LoadWeights<>(model2, "./../cfg/darknet19.xml");
     }
+    else if (strncmp(argv[i], "resnet18", 8))
+    {
+      mlpack::ann::FFN<> model2;
+      model2.ResetParameters();
+      model2.Parameters() = arma::mat(11694312, 1);
+      LoadWeights<>(model2, "./../cfg/resnet18.xml");
+    } 
   }
 
   return 0;
