@@ -31,10 +31,11 @@
 #include <ensmallen_utils/print_metric.hpp>
 #include <ensmallen_utils/periodic_save.hpp>
 #include <ensmallen.hpp>
-#include <mlpack/methods/ann/loss_functions/cross_entropy_error.hpp>
+#include <mlpack/methods/ann/loss_functions/binary_cross_entropy_loss.hpp>
 
 using namespace mlpack;
 using namespace mlpack::ann;
+using namespace mlpack::models;
 using namespace arma;
 using namespace std;
 using namespace ens;
@@ -73,7 +74,6 @@ void LoadWeights(mlpack::ann::FFN<OutputLayer, InitializationRule> &model,
   model.Parameters().fill(0);
   BOOST_FOREACH (boost::property_tree::ptree::value_type const &layer, modelConfig)
   {
-    std::cout << layer << std::endl;
     std::string progressBar(81, '-');
     size_t filled = std::ceil(currentOffset * 80.0 / model.Parameters().n_elem);
     progressBar[0] = '[';
@@ -83,9 +83,9 @@ void LoadWeights(mlpack::ann::FFN<OutputLayer, InitializationRule> &model,
 
     // Load Weights.
     if (layer.second.get_child("has_weights").data() != "0")
-    {
+    { 
       arma::mat weights;
-      mlpack::data::Load("./../../../" + layer.second.get_child("weight_csv").data(), weights);
+      mlpack::data::Load("./../../" + layer.second.get_child("weight_csv").data(), weights);
       model.Parameters()(arma::span(currentOffset, currentOffset + weights.n_elem - 1),
                          arma::span()) = weights.t();
       currentOffset += weights.n_elem;
@@ -99,7 +99,7 @@ void LoadWeights(mlpack::ann::FFN<OutputLayer, InitializationRule> &model,
     if (layer.second.get_child("has_bias").data() != "0")
     {
       arma::mat bias;
-      mlpack::data::Load("./../../../" + layer.second.get_child("bias_csv").data(), bias);
+      mlpack::data::Load("./../../" + layer.second.get_child("bias_csv").data(), bias);
       model.Parameters()(arma::span(currentOffset, currentOffset + bias.n_elem - 1),
                          arma::span()) = bias.t();
       currentOffset += bias.n_elem;
@@ -111,12 +111,12 @@ void LoadWeights(mlpack::ann::FFN<OutputLayer, InitializationRule> &model,
 
     if (layer.second.get_child("has_running_mean").data() != "0")
     {
-      batchNormRunningMean.push("./../../../" + layer.second.get_child("running_mean_csv").data());
+      batchNormRunningMean.push("./../../" + layer.second.get_child("running_mean_csv").data());
     }
 
     if (layer.second.get_child("has_running_var").data() != "0")
     {
-      batchNormRunningVar.push("./../../../" + layer.second.get_child("running_var_csv").data());
+      batchNormRunningVar.push("./../../" + layer.second.get_child("running_var_csv").data());
     }
   }
   std::cout << std::endl;
@@ -211,22 +211,22 @@ int main()
   double sum = arma::accu(output);
   std::cout << std::setprecision(10) << sum << " --> " << output.col(0).index_max() << std::endl;
 
-  input.clear();
-  mlpack::data::Load("./../../../../imagenette_image.csv", input);
-  std::cout << input.n_cols << std::endl;
-  if (input.n_cols > 80)
-  {
-      input = input.t();
-      cout << "New cols : " << input.n_cols << std::endl;
-  }
+  // input.clear();
+  // mlpack::data::Load("./../../../../imagenette_image.csv", input);
+  // std::cout << input.n_cols << std::endl;
+  // if (input.n_cols > 80)
+  // {
+  //     input = input.t();
+  //     cout << "New cols : " << input.n_cols << std::endl;
+  // }
 
-  for (int i = 0; i < input.n_cols; i++)
-  {
-      output.clear();
-      resnet.GetModel().Predict(input.col(i), output);
-      sum = arma::accu(output);
-      std::cout << std::setprecision(10) << sum << " --> " << output.col(0).index_max() <<
-          "  " << output.col(0).max() << std::endl;
-  }
+  // for (int i = 0; i < input.n_cols; i++)
+  // {
+  //     output.clear();
+  //     resnet.GetModel().Predict(input.col(i), output);
+  //     sum = arma::accu(output);
+  //     std::cout << std::setprecision(10) << sum << " --> " << output.col(0).index_max() <<
+  //         "  " << output.col(0).max() << std::endl;
+  // }
   return 0;
 }
