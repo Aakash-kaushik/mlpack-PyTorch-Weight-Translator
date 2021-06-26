@@ -149,60 +149,68 @@ template <
     typename OutputLayer = mlpack::ann::NegativeLogLikelihood<>,
     typename InitializationRule = mlpack::ann::RandomInitialization
 >void HardCodedRunningMeanAndVariance(
-    mlpack::ann::FFN<OutputLayer, InitializationRule> &model)
+    mlpack::ann::FFN<OutputLayer, InitializationRule>& model)
 {
   arma::mat runningMean, runningVar;
-  vector<size_t> indices ={ 1, 2 };
+  vector<size_t> indices ={ 1 };
   for (size_t idx : indices)
   {
-      LoadBNMats(runningMean, runningVar);
-      std::cout << "Loading RunningMean and Variance for " << idx << std::endl;
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(model.Model()[idx])->Model()[1])->TrainingMean() = runningMean.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(model.Model()[idx])->Model()[1])->TrainingVariance() = runningVar.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(model.Model()[idx])->Model()[1])->Deterministic() = true;
-
+    LoadBNMats(runningMean, runningVar);
+    std::cout << "Loading RunningMean and Variance for " << idx << std::endl;
+    boost::get<BatchNorm<>*>(model.Model()[idx])->TrainingMean() = runningMean.t();
+    boost::get<BatchNorm<>*>(model.Model()[idx])->TrainingVariance() = runningVar.t();
+    boost::get<BatchNorm<>*>(model.Model()[idx])->Deterministic() = true;
   }
 
-  vector<size_t> darknet53Cfg ={ 1, 2, 8, 8, 4 };
-  size_t cnt = 3;
-  for (size_t blockCnt : darknet53Cfg)
+  // For blocks with identity layer
+  vector<size_t> resnet18Cfg ={ 5, 6, 7, 8, 9, 10, 11 };
+  for (size_t blockCnt : resnet18Cfg)
   {
-      for (size_t layer = 0; layer < blockCnt; layer++)
-      {
-          std::cout << "Loading RunningMean and Variance for " << cnt << std::endl;
-          LoadBNMats(runningMean, runningVar);
+    // For downsample blocks. 
+    if (blockCnt != 5 || blockCnt != 6 || blockCnt != 9 || blockCnt != 11)
+    {
+      std::cout << "Loading RunningMean and Variance for identity blocks: " << blockCnt << std::endl;
+      LoadBNMats(runningMean, runningVar);
 
-          std::cout << boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[0])->Model()[1])->InputSize() << " ---- " << runningMean.n_elem << std::endl;;
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[0])->Model()[1])->Deterministic() = true;
-          std::cout << "Loading RunningMean and Variance for " << cnt << std::endl;
-          LoadBNMats(runningMean, runningVar);
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[1])->Model()[1])->TrainingMean() = runningMean.t();
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[1])->Model()[1])->TrainingVariance() = runningVar.t();
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<Residual<>*>(model.Model()[cnt])->Model()[1])->Model()[1])->Deterministic() = true;
-          cnt++;
-      }
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->Deterministic() = true;
 
-      if (blockCnt != 4)
-      {
-          std::cout << "Loading RunningMean and Variance for " << cnt << std::endl;
-          LoadBNMats(runningMean, runningVar);
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(model.Model()[cnt])->Model()[1])->TrainingMean() = runningMean.t();
-          boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(model.Model()[cnt])->Model()[1])->TrainingVariance() = runningVar.t();
-          cnt++;
-      }
+      LoadBNMats(runningMean, runningVar);
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
+
+      LoadBNMats(runningMean, runningVar);
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[1])->Model()[1])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[1])->Model()[1])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[1])->Model()[1])->Deterministic() = true;
+    }
+
+    // For identitiy blocks. 
+    else
+    {
+      std::cout << "Loading RunningMean and Variance for downsample blocks: " << blockCnt << std::endl;
+      LoadBNMats(runningMean, runningVar);
+
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->Deterministic() = true;
+
+      LoadBNMats(runningMean, runningVar);
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
+    }
   }
-
-  cout << batchNormRunningMean.size() << endl;
 }
 
 
 int main()
 { 
   ResNet18 resnet(3, 224, 224);
-  LoadWeights<mlpack::ann::CrossEntropyError<>>(resnet.GetModel(), "./../../cfg/resnet18.xml");
-  HardCodedRunningMeanAndVariance<mlpack::ann::CrossEntropyError<>>(resnet.GetModel());
+  LoadWeights<mlpack::ann::CrossEntropyError<> >(resnet.GetModel(), "./../../cfg/resnet18.xml");
+  HardCodedRunningMeanAndVariance<mlpack::ann::CrossEntropyError<> >(resnet.GetModel());
 
   arma::mat input(224 * 224 * 3, 1), output;
   input.fill(1.0);
@@ -210,6 +218,7 @@ int main()
   resnet.GetModel().Predict(input, output);
   double sum = arma::accu(output);
   std::cout << std::setprecision(10) << sum << " --> " << output.col(0).index_max() << std::endl;
+  // mlpack::data::Save("./model-weights/resnet18.bin", "ResNet", resnet);
 
   // input.clear();
   // mlpack::data::Load("./../../../../imagenette_image.csv", input);
