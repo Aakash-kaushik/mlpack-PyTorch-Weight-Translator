@@ -14,7 +14,7 @@
  * 3-clause BSD license along with mlpack.  If not, see
  * http://www.opensource.org/licenses/BSD-3-Clause for more information.
  */
-
+#include <map>
 #include <mlpack/core.hpp>
 #include <dataloader/dataloader.hpp>
 #include <models/resnet/resnet.hpp>
@@ -162,45 +162,54 @@ template <
     boost::get<BatchNorm<>*>(model.Model()[idx])->Deterministic() = true;
   }
 
-  // For blocks with identity layer
-  vector<size_t> resnet18Cfg ={ 5, 6, 7, 8, 9, 10, 11 };
-  for (size_t blockCnt : resnet18Cfg)
+  std::map<size_t, size_t> resnetcfg = {
+    {5, 1},
+    {6, 1},
+    {7, 0},
+    {8, 1},
+    {9, 0},
+    {10, 1},
+    {11, 0},
+    {12, 1}
+  };
+
+  for (auto it = resnetcfg.begin(); it != resnetcfg.end(); ++it)
   {
-    // For downsample blocks. 
-    if (blockCnt != 5 || blockCnt != 6 || blockCnt != 9 || blockCnt != 11)
+    // for identitiy blocks
+    if (it->second == 1)
     {
-      std::cout << "Loading RunningMean and Variance for identity blocks: " << blockCnt << std::endl;
+      std::cout << "Loading RunningMean and Variance for identitiy blocks: " << it->first << std::endl;
       LoadBNMats(runningMean, runningVar);
 
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->Deterministic() = true;
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[1])->Deterministic() = true;
 
       LoadBNMats(runningMean, runningVar);
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
-
-      LoadBNMats(runningMean, runningVar);
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[1])->Model()[1])->TrainingMean() = runningMean.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[1])->Model()[1])->TrainingVariance() = runningVar.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[1])->Model()[1])->Deterministic() = true;
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
     }
 
-    // For identitiy blocks. 
-    else
+    // For downsample blocks. 
+    else if (it->second == 0)
     {
-      std::cout << "Loading RunningMean and Variance for downsample blocks: " << blockCnt << std::endl;
+      std::cout << "Loading RunningMean and Variance for downsample blocks: " << it->first << std::endl;
       LoadBNMats(runningMean, runningVar);
 
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[1])->Deterministic() = true;
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[1])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[1])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[1])->Deterministic() = true;
 
       LoadBNMats(runningMean, runningVar);
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
-      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[blockCnt])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
+
+      LoadBNMats(runningMean, runningVar);
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[1])->Model()[1])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[1])->Model()[1])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[1])->Model()[1])->Deterministic() = true;
     }
   }
 }
