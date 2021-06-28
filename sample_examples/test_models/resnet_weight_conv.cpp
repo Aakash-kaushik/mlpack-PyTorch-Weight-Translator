@@ -163,15 +163,57 @@ template <
   }
 
   std::map<size_t, size_t> resnetcfg = {
-    {5, 1},
+    {5, 0},
     {6, 1},
-    {7, 0},
-    {8, 1},
-    {9, 0},
+    {7, 1},
+    {8, 0},
+    {9, 1},
     {10, 1},
-    {11, 0},
-    {12, 1}
-  };
+    {11, 1},
+    {12, 1},
+    {13, 1},
+    {14, 1},
+    {15, 1},
+    {16, 0},
+    {17, 1},
+    {18, 1},
+    {19, 1},
+    {20, 1},
+    {21, 1},
+    {22, 1},
+    {23, 1},
+    {24, 1},
+    {25, 1},
+    {26, 1},
+    {27, 1},
+    {28, 1},
+    {29, 1},
+    {30, 1},
+    {31, 1},
+    {32, 1},
+    {33, 1},
+    {34, 1},
+    {35, 1},
+    {36, 1},
+    {37, 1},
+    {38, 1},
+    {39, 1},
+    {40, 1},
+    {41, 1},
+    {42, 1},
+    {43, 1},
+    {44, 1},
+    {45, 1},
+    {46, 1},
+    {47, 1},
+    {48, 1},
+    {49, 1},
+    {50, 1},
+    {51, 1},
+    {52, 0},
+    {53, 1},
+    {54, 1}
+ };
 
   for (auto it = resnetcfg.begin(); it != resnetcfg.end(); ++it)
   {
@@ -189,6 +231,11 @@ template <
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->TrainingMean() = runningMean.t();
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->TrainingVariance() = runningVar.t();
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
+      
+      LoadBNMats(runningMean, runningVar);
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[7])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[7])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[7])->Deterministic() = true;
     }
 
     // For downsample blocks. 
@@ -207,6 +254,11 @@ template <
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[4])->Deterministic() = true;
 
       LoadBNMats(runningMean, runningVar);
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[7])->TrainingMean() = runningMean.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[7])->TrainingVariance() = runningVar.t();
+      boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[0])->Model()[7])->Deterministic() = true;
+      
+      LoadBNMats(runningMean, runningVar);
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[1])->Model()[1])->TrainingMean() = runningMean.t();
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[1])->Model()[1])->TrainingVariance() = runningVar.t();
       boost::get<BatchNorm<>*>(boost::get<Sequential<>*>(boost::get<AddMerge<>*>(boost::get<Sequential<>*>(model.Model()[it->first])->Model()[0])->Model()[1])->Model()[1])->Deterministic() = true;
@@ -217,19 +269,17 @@ template <
 
 int main()
 { 
-  ResNet18 resnet(3, 224, 224);
-  LoadWeights<mlpack::ann::CrossEntropyError<> >(resnet.GetModel(), "./../../cfg/resnet18.xml");
+  ResNet152 resnet(3, 224, 224);
+  LoadWeights<mlpack::ann::CrossEntropyError<> >(resnet.GetModel(), "./../../cfg/resnet152.xml");
   HardCodedRunningMeanAndVariance<mlpack::ann::CrossEntropyError<> >(resnet.GetModel());
 
   arma::mat input(224 * 224 * 3, 1), output;
   input.fill(1.0);
-
   resnet.GetModel().Predict(input, output);
   double sum = arma::accu(output);
-  std::cout << std::setprecision(10) << sum << " --> " << output.col(0).index_max() << std::endl;
-  // mlpack::data::Save("./model-weights/resnet18.bin", "ResNet", resnet);
+  std::cout << sum << std::endl;
+  mlpack::data::Save("./resnet152.bin", "ResNet", resnet.GetModel());
 
-  // input.clear();
   // mlpack::data::Load("./../../../../imagenette_image.csv", input);
   // std::cout << input.n_cols << std::endl;
   // if (input.n_cols > 80)

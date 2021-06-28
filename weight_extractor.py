@@ -86,10 +86,12 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             bias_csv_name = "conv_bias_" + layer_index + ".csv"
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
+            print("weight: ", torch.sum(layer.weight), "bias: ", torch.sum(layer.bias))
         else:
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_channels
             parameter_dictionary["bias_csv"] = "None"
+            print("weight: ", torch.sum(layer.weight))
         parameter_dictionary["has_running_mean"] = 0
         parameter_dictionary["running_mean_csv"] = "None"
         parameter_dictionary["has_running_var"] = 0
@@ -113,10 +115,13 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             bias_csv_name = "batchnorm_bias_" + layer_index + ".csv"
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
+            print("weight: ", torch.sum(layer.weight), "bias: ", torch.sum(layer.bias), "Running mean: ", torch.sum(layer.running_mean), "running var: ", torch.sum(layer.running_var))
         else:
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_channels
             parameter_dictionary["bias_csv"] = "None"
+            print("weight: ", torch.sum(layer.weight), "Running mean: ", torch.sum(layer.running_mean), "running var: ", torch.sum(layer.running_var))
+
         # Assume BatchNorm layer always running variance and running mean.
         running_mean_csv = "batchnorm_running_mean_" + layer_index + ".csv"
         parameter_dictionary["has_running_mean"] = 1
@@ -145,10 +150,12 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             bias_csv_name = "linear_bias_" + layer_index + ".csv"
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
+            print("weight: ", torch.sum(layer.weight), "bias: ", torch.sum(layer.bias))
         else:
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_features
             parameter_dictionary["bias_csv"] = "None"
+            print("weight: ", torch.sum(layer.weight))
         parameter_dictionary["has_running_mean"] = 0
         parameter_dictionary["running_mean_csv"] = "None"
         parameter_dictionary["has_running_var"] = 0
@@ -169,6 +176,7 @@ def extract_weights(layer, layer_index, base_path) -> {} :
         parameter_dictionary["running_mean_csv"] = "None"
         parameter_dictionary["has_running_var"] = 0
         parameter_dictionary["running_var_csv"] = "None"
+        print("weight: ", "0", "bias: ", "0")
     return parameter_dictionary
 
 def create_xml_tree(parameter_dictionary : dict, root_tag = "layer") -> ElementTree.ElementTree() :
@@ -359,5 +367,13 @@ if __name__ == "__main__":
       generate_csv("./output_tensor.csv", output_tensor.detach(), "./")
   if args.model == "resnet18":
       model = models.resnet18(pretrained=True)
+  if args.model == "resnet34":
+      model = models.resnet34(pretrained=True)
+  if args.model == "resnet50":
+      model = models.resnet50(pretrained=True)
+  if args.model == "resnet101":
+      model = models.resnet101(pretrained=True)
+  if args.model == "resnet152":
+      model = models.resnet152(pretrained=True)
   parse_model(model, "./cfg/" + args.model + ".xml", "./models/" + args.model + "/mlpack-weights/", True)
 
