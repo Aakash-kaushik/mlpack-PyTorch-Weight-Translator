@@ -32,6 +32,7 @@
 #include <ensmallen_utils/periodic_save.hpp>
 #include <ensmallen.hpp>
 #include <mlpack/methods/ann/loss_functions/binary_cross_entropy_loss.hpp>
+#include <sstream>
 
 using namespace mlpack;
 using namespace mlpack::ann;
@@ -203,17 +204,38 @@ template <
 
 int main()
 { 
-  MobilenetV1 mobilenet(3, 224, 224);
-  LoadWeights<mlpack::ann::CrossEntropyError<> >(mobilenet.GetModel(), "./../../cfg/mobilenetv1_1.0_224.xml");
-  HardCodedRunningMeanAndVariance<mlpack::ann::CrossEntropyError<> >(mobilenet.GetModel());
-  mlpack::data::Save("./mobilenet_1.0_224.bin", "mobilenet_v1", mobilenet.GetModel());
+  std::vector<double> alpha = {0.25, 0.5, 0.75, 1.0};
+  std::vector<int> image_size = {128, 160, 192, 224};
+  for (double alpha_val : alpha)
+  {
+    for (int image_size_val : image_size)
+    {
+      MobilenetV1 mobilenet(3, image_size_val, image_size_val, alpha_val);
+      std::ostringstream alp, img_sz;
+      alp << alpha_val;
+      img_sz << image_size_val;
+      string config_file = "mobilenet_v1_size_" + img_sz.str() + "_alpha_" +  alp.str() + ".xml";
+      string save_file = "mobilenetv1_" + alp.str() + "_" + img_sz.str() + ".xml";
+      std::cout << config_file << std::endl;
+      LoadWeights<mlpack::ann::CrossEntropyError<> >(mobilenet.GetModel(), "./../../cfg/" + config_file);
+      HardCodedRunningMeanAndVariance<mlpack::ann::CrossEntropyError<> >(mobilenet.GetModel());
+      mlpack::data::Save("./weights/"+save_file+".bin", "mobilenet_v1", mobilenet.GetModel());
+    }
+  } 
 
-  arma::mat input(224 * 224 * 3, 1), output;
-  input.fill(1.0);
-  mobilenet.GetModel().Predict(input, output);
-  double sum = arma::accu(output);
-  std::cout << sum << std::endl;
-  output.print();
+  // arma::mat input(224 * 224 * 3, 1), output;
+  // input.fill(1.0);
+  // mobilenet.GetModel().Predict(input, output);
+  // double sum = arma::accu(output);
+  // std::cout << sum << std::endl;
+  // output.print();
+
+  // std::cout << "Loaded model output" << std::endl;
+  // mobilenet2.LoadModel("./mobilenet_1.0_224.bin");
+  // mobilenet2.GetModel().Predict(input, output);
+  // sum = arma::accu(output);
+  // std::cout << sum << std::endl;
+  // output.print();
 
   // mlpack::data::Load("./../../../../imagenette_image.csv", input);
   // std::cout << input.n_cols << std::endl;

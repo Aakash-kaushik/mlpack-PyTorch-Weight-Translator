@@ -84,9 +84,11 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             parameter_dictionary["has_bias"] = 1
             parameter_dictionary["bias_offset"] = 0
             bias_csv_name = "conv_bias_" + layer_index + ".csv"
+            print("Conv bias sum: ", torch.sum(layer.bias) + torch.sum(layer.weight))
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
         else:
+            print("Conv weight sum: ", torch.sum(layer.weight))
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_channels
             parameter_dictionary["bias_csv"] = "None"
@@ -111,19 +113,24 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             parameter_dictionary["has_bias"] = 1
             parameter_dictionary["bias_offset"] = 0
             bias_csv_name = "batchnorm_bias_" + layer_index + ".csv"
+            print("batchnorm bias sum: ", torch.sum(layer.bias) + torch.sum(layer.weight))
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
+
         else:
+            print("batchnorm weight sum: ", torch.sum(layer.weight))
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_channels
             parameter_dictionary["bias_csv"] = "None"
         # Assume BatchNorm layer always running variance and running mean.
         running_mean_csv = "batchnorm_running_mean_" + layer_index + ".csv"
         parameter_dictionary["has_running_mean"] = 1
+        print("batchnorm running_mean sum: ", torch.sum(layer.running_mean))
         parameter_dictionary["running_mean_csv"] = generate_csv(running_mean_csv, \
             layer.running_mean.detach(), base_path)
         parameter_dictionary["has_running_var"] = 1
         running_var_csv = "batchnorm_running_var_" + layer_index + ".csv" 
+        print("batchnorm running_var sum: ", torch.sum(layer.running_var))
         parameter_dictionary["running_var_csv"] = generate_csv(running_var_csv, \
             layer.running_var.detach(), base_path)
     elif (isinstance(layer, nn.Linear)) :
@@ -143,9 +150,11 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             parameter_dictionary["has_bias"] = 1
             parameter_dictionary["bias_offset"] = 0
             bias_csv_name = "linear_bias_" + layer_index + ".csv"
+            print("Linear bias sum: ", torch.sum(layer.bias) + torch.sum(layer.weight))
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
         else:
+            print("Linear weight sum: ", torch.sum(layer.weight))
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_features
             parameter_dictionary["bias_csv"] = "None"
@@ -313,10 +322,12 @@ if __name__ == "__main__":
       output_tensor = model(input_tensor)
       generate_csv("./output_tensor.csv", output_tensor.detach(), "./")
   if args.model.split("_")[0] == 'mobilenetv1':
-     model_alpha = args.model.split("_")[1]
-     model_img_size = args.model.split("_")[2]
-     model = MobileNet_v1(1000, alpha=float(model_alpha), input_size=int(model_img_size), include_top=True)
-     model.load_state_dict(torch.load("./pt_model_weights/mobilenet_v1_size_" + model_img_size + "_alpha_" + model_alpha + "_top.pth"))
-     if os.path.exists("./models/" + args.model + "/mlpack-weights/") == False :
-        os.makedirs("./models/" + args.model + "/mlpack-weights/")
-  parse_model(model, "./cfg/" + args.model + ".xml", "./models/" + args.model + "/mlpack-weights/", True)
+     for model_alpha in [0.25, 0.5, 0.75, 1.0]:
+        for model_img_size in [128, 160, 192, 224]:
+            model_name = "mobilenet_v1_size_" + str(model_img_size) + "_alpha_" + str(model_alpha)
+            print("constructing for " + "./pt_model_weights/mobilenet_v1_size_" + str(model_img_size) + "_alpha_" + str(model_alpha) + "_top.pth")
+            model = MobileNet_v1(1000, alpha=model_alpha, input_size=model_img_size, include_top=True)
+            model.load_state_dict(torch.load("./pt_model_weights/mobilenet_v1_size_" + str(model_img_size) + "_alpha_" + str(model_alpha) + "_top.pth"))
+            if os.path.exists("./models/" + model_name + "/mlpack-weights/") == False :
+               os.makedirs("./models/" + model_name + "/mlpack-weights/")
+            parse_model(model, "./cfg/" + model_name + ".xml", "./models/" + model_name + "/mlpack-weights/", True)
