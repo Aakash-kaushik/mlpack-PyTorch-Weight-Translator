@@ -5,7 +5,6 @@ import numpy as np
 import argparse
 from models import *
 from xml.etree import ElementTree
-from torchvision import models
 
 def make_directory(base_path : str) -> int :
     """
@@ -86,12 +85,10 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             bias_csv_name = "conv_bias_" + layer_index + ".csv"
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
-            print("weight: ", torch.sum(layer.weight), "bias: ", torch.sum(layer.bias))
         else:
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_channels
             parameter_dictionary["bias_csv"] = "None"
-            print("weight: ", torch.sum(layer.weight))
         parameter_dictionary["has_running_mean"] = 0
         parameter_dictionary["running_mean_csv"] = "None"
         parameter_dictionary["has_running_var"] = 0
@@ -115,13 +112,10 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             bias_csv_name = "batchnorm_bias_" + layer_index + ".csv"
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
-            print("weight: ", torch.sum(layer.weight), "bias: ", torch.sum(layer.bias), "Running mean: ", torch.sum(layer.running_mean), "running var: ", torch.sum(layer.running_var))
         else:
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_channels
             parameter_dictionary["bias_csv"] = "None"
-            print("weight: ", torch.sum(layer.weight), "Running mean: ", torch.sum(layer.running_mean), "running var: ", torch.sum(layer.running_var))
-
         # Assume BatchNorm layer always running variance and running mean.
         running_mean_csv = "batchnorm_running_mean_" + layer_index + ".csv"
         parameter_dictionary["has_running_mean"] = 1
@@ -150,12 +144,10 @@ def extract_weights(layer, layer_index, base_path) -> {} :
             bias_csv_name = "linear_bias_" + layer_index + ".csv"
             parameter_dictionary["bias_csv"] = generate_csv(bias_csv_name, \
                 layer.bias.detach(), base_path)
-            print("weight: ", torch.sum(layer.weight), "bias: ", torch.sum(layer.bias))
         else:
             parameter_dictionary["has_bias"] = 0
             parameter_dictionary["bias_offset"] = layer.out_features
             parameter_dictionary["bias_csv"] = "None"
-            print("weight: ", torch.sum(layer.weight))
         parameter_dictionary["has_running_mean"] = 0
         parameter_dictionary["running_mean_csv"] = "None"
         parameter_dictionary["has_running_var"] = 0
@@ -176,7 +168,6 @@ def extract_weights(layer, layer_index, base_path) -> {} :
         parameter_dictionary["running_mean_csv"] = "None"
         parameter_dictionary["has_running_var"] = 0
         parameter_dictionary["running_var_csv"] = "None"
-        print("weight: ", "0", "bias: ", "0")
     return parameter_dictionary
 
 def create_xml_tree(parameter_dictionary : dict, root_tag = "layer") -> ElementTree.ElementTree() :
@@ -226,52 +217,28 @@ def create_xml_file(parameter_dictionary : dict,
     xml_file.write(xml_path, encoding = "unicode")
     return 0
 
-def iterate_over_layers(module, xml_path, base_path, layer_index, debug : bool) -> int :
+def iterate_over_layers(modules, xml_path, base_path, layer_index, debug : bool) -> int :
     """
         Parses model and generates csv and xml file which will be iterated by C++ translator.
     
         Args:
-        module : PyTorch model for which parameter csv and xml will be created.
+        modules : PyTorch model for which parameter csv and xml will be created.
         xml_path : Directory where xml with model config will be saved.
         base_path : Directory where csv will be stored.
 
         Returns 0 if weights are created else return 1.
     """
-    # Simple hack for the first conv layer of resnet.
-    if isinstance(module, nn.Conv2d) or isinstance(module, nn.BatchNorm2d) or isinstance(module, nn.ReLU) or isinstance(module, nn.MaxPool2d) or isinstance(module, nn.AdaptiveAvgPool2d) or isinstance(module, nn.Linear):
-        layer_index += 1
-        parameter_dict = extract_weights(module, str(layer_index), base_path)
-        create_xml_file(parameter_dict, xml_path, "model", "layer")
-        if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
-            print("Creating weights failed!")
-            return 1, layer_index
-        if debug :
-            print("Weights created succesfully for", parameter_dict["name"], "layer index :", layer_index)
-        return 0, layer_index
-
-    if isinstance(module, nn.Sequential):
-        for block in module :
-            for layer_name, layer in block.named_children():
-                if isinstance(layer, nn.Sequential):
-                    for downsample_layer_name, downsample_layer in layer.named_children():
-                        layer_index += 1
-                        parameter_dict = extract_weights(downsample_layer, str(layer_index), base_path)
-                        create_xml_file(parameter_dict, xml_path, "model", "layer")
-                        if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
-                            print("Creating weights failed!")
-                            return 1, layer_index
-                        if debug :
-                            print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
-                else:
-                    layer_index += 1
-                    parameter_dict = extract_weights(layer, str(layer_index), base_path)
-                    create_xml_file(parameter_dict, xml_path, "model", "layer")
-                    if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
-                        print("Creating weights failed!")
-                        return 1, layer_index
-                    if debug :
-                        print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
-        return 0, layer_index
+    for block in modules :
+        for layer in block :
+            layer_index += 1
+            parameter_dict = extract_weights(layer, str(layer_index), base_path)
+            create_xml_file(parameter_dict, xml_path, "model", "layer")
+            if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
+                print("Creating weights failed!")
+                return 1, layer_index
+            if debug :
+                print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
+    return 0, layer_index
 
 def parse_model(model, xml_path, base_path, debug : bool) -> int :
     """
@@ -285,67 +252,16 @@ def parse_model(model, xml_path, base_path, debug : bool) -> int :
         Returns 0 if weights are created else return 1.
     """
     layer_index = 0
-
-    # first conv layer 
-    error, layer_index = iterate_over_layers(model.conv1, xml_path, base_path, layer_index, debug)
+    error, layer_index = iterate_over_layers(model.features, xml_path, base_path, layer_index, debug)
     if error :
         print("An error occured!")
         return 1
-
-    # second batchnorm layer 
-    error, layer_index = iterate_over_layers(model.bn1, xml_path, base_path, layer_index, debug)
+    print(layer_index)
+    error, layer_index = iterate_over_layers(model.classifier, xml_path, base_path, layer_index, debug)
     if error :
         print("An error occured!")
         return 1
-
-    # third relu
-    error, layer_index = iterate_over_layers(model.relu, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-   
-    # fourth maxpool layer 
-    error, layer_index = iterate_over_layers(model.maxpool, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-   
-    # layer1 module of resent
-    error, layer_index = iterate_over_layers(model.layer1, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-  
-    # layer2 module of resent
-    error, layer_index = iterate_over_layers(model.layer2, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-
-    # layer3 module of resent
-    error, layer_index = iterate_over_layers(model.layer3, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
- 
-    # layer4 module of resent
-    error, layer_index = iterate_over_layers(model.layer4, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-   
-    # eighth avg pool layer 
-    error, layer_index = iterate_over_layers(model.avgpool, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-   
-    # final linear layer
-    error, layer_index = iterate_over_layers(model.fc, xml_path, base_path, layer_index, debug)
-    if error :
-        print("An error occured!")
-        return 1
-
+    print(layer_index)
     if debug :
         print("Model weights saved! Happy mlpack-translation.")
     return 0
@@ -365,15 +281,5 @@ if __name__ == "__main__":
       generate_csv("./input_tensor.csv", input_tensor, "./")
       output_tensor = model(input_tensor)
       generate_csv("./output_tensor.csv", output_tensor.detach(), "./")
-  if args.model == "resnet18":
-      model = models.resnet18(pretrained=True)
-  if args.model == "resnet34":
-      model = models.resnet34(pretrained=True)
-  if args.model == "resnet50":
-      model = models.resnet50(pretrained=True)
-  if args.model == "resnet101":
-      model = models.resnet101(pretrained=True)
-  if args.model == "resnet152":
-      model = models.resnet152(pretrained=True)
   parse_model(model, "./cfg/" + args.model + ".xml", "./models/" + args.model + "/mlpack-weights/", True)
 
