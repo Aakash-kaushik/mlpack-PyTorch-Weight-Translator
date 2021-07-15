@@ -124,3 +124,5 @@ class Darknet19(BaseModel):
             dic[now_keys]=values
         self.load_state_dict(dic)
         print('Weights are loaded!')
+
+        

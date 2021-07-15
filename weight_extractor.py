@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 from models import *
 from xml.etree import ElementTree
+from mobilenet_v1 import MobileNet_v1
 
 def make_directory(base_path : str) -> int :
     """
@@ -228,17 +229,42 @@ def iterate_over_layers(modules, xml_path, base_path, layer_index, debug : bool)
 
         Returns 0 if weights are created else return 1.
     """
-    for block in modules :
-        for layer in block :
-            layer_index += 1
-            parameter_dict = extract_weights(layer, str(layer_index), base_path)
-            create_xml_file(parameter_dict, xml_path, "model", "layer")
-            if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
-                print("Creating weights failed!")
-                return 1, layer_index
-            if debug :
-                print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
+    if isinstance(modules, nn.Sequential):
+        for block in modules :
+            for layer in block :
+                if isinstance(layer, nn.ConstantPad2d):
+                    print("skipping constant padding 2d layer")
+                else:
+                    layer_index += 1
+                    parameter_dict = extract_weights(layer, str(layer_index), base_path)
+                    create_xml_file(parameter_dict, xml_path, "model", "layer")
+                    if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
+                        print("Creating weights failed!")
+                        return 1, layer_index
+                    if debug :
+                        print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
+    
+    if isinstance(modules, nn.AvgPool2d):
+        layer_index += 1
+        parameter_dict = extract_weights(modules, str(layer_index), base_path)
+        create_xml_file(parameter_dict, xml_path, "model", "layer")
+        if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
+            print("Creating weights failed!")
+            return 1, layer_index
+        if debug :
+            print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
+    
+    if isinstance(modules, nn.Conv2d):
+        layer_index += 1
+        parameter_dict = extract_weights(modules, str(layer_index), base_path)
+        create_xml_file(parameter_dict, xml_path, "model", "layer")
+        if not os.path.exists(parameter_dict["weight_csv"]) and parameter_dict["has_weights"] == 1:
+            print("Creating weights failed!")
+            return 1, layer_index
+        if debug :
+            print("Weights created succesfully for ", parameter_dict["name"], " layer index :", layer_index)
     return 0, layer_index
+
 
 def parse_model(model, xml_path, base_path, debug : bool) -> int :
     """
@@ -252,12 +278,17 @@ def parse_model(model, xml_path, base_path, debug : bool) -> int :
         Returns 0 if weights are created else return 1.
     """
     layer_index = 0
-    error, layer_index = iterate_over_layers(model.features, xml_path, base_path, layer_index, debug)
+    error, layer_index = iterate_over_layers(model.model[:14], xml_path, base_path, layer_index, debug)
     if error :
         print("An error occured!")
         return 1
     print(layer_index)
-    error, layer_index = iterate_over_layers(model.classifier, xml_path, base_path, layer_index, debug)
+    error, layer_index = iterate_over_layers(model.model[14], xml_path, base_path, layer_index, debug)
+    if error :
+        print("An error occured!")
+        return 1
+    print(layer_index)
+    error, layer_index = iterate_over_layers(model.fc, xml_path, base_path, layer_index, debug)
     if error :
         print("An error occured!")
         return 1
@@ -281,5 +312,11 @@ if __name__ == "__main__":
       generate_csv("./input_tensor.csv", input_tensor, "./")
       output_tensor = model(input_tensor)
       generate_csv("./output_tensor.csv", output_tensor.detach(), "./")
+  if args.model.split("_")[0] == 'mobilenetv1':
+     model_alpha = args.model.split("_")[1]
+     model_img_size = args.model.split("_")[2]
+     model = MobileNet_v1(1000, alpha=float(model_alpha), input_size=int(model_img_size), include_top=True)
+     model.load_state_dict(torch.load("./pt_model_weights/mobilenet_v1_size_" + model_img_size + "_alpha_" + model_alpha + "_top.pth"))
+     if os.path.exists("./models/" + args.model + "/mlpack-weights/") == False :
+        os.makedirs("./models/" + args.model + "/mlpack-weights/")
   parse_model(model, "./cfg/" + args.model + ".xml", "./models/" + args.model + "/mlpack-weights/", True)
-
