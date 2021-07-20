@@ -375,5 +375,7 @@ if __name__ == "__main__":
       model = models.resnet101(pretrained=True)
   if args.model == "resnet152":
       model = models.resnet152(pretrained=True)
+  if os.path.exists("./models/" + args.model + "/mlpack-weights/") == False :
+      os.makedirs("./models/" + args.model + "/mlpack-weights/")
   parse_model(model, "./cfg/" + args.model + ".xml", "./models/" + args.model + "/mlpack-weights/", True)
 
